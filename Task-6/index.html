@@ -1,0 +1,254 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Contact Form with Validation</title>
+  <style>
+    /* Simple modern styling */
+    :root{
+      --accent:#5b6cff;
+      --danger:#e74c3c;
+      --muted:#6b7280;
+      --bg:#f7f8fc;
+      --card:#ffffff;
+    }
+    body{
+      font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+      background: linear-gradient(180deg, var(--bg), #fff);
+      padding: 40px;
+      display:flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+    }
+    .card{
+      background:var(--card);
+      width: 100%;
+      max-width: 720px;
+      padding: 28px;
+      border-radius: 12px;
+      box-shadow: 0 8px 30px rgba(20,20,50,0.06);
+    }
+    h1{ margin:0 0 8px; font-size:20px; }
+    p.lead{ color:var(--muted); margin-top:0; margin-bottom:18px; }
+
+    form .row{ display:grid; grid-template-columns:1fr; gap:12px; }
+    label{ display:block; font-size:13px; margin-bottom:6px; color:#111827;}
+    input[type="text"], input[type="email"], textarea{
+      width:100%;
+      padding:10px 12px;
+      border:1px solid #dfe3ee;
+      border-radius:8px;
+      font-size:14px;
+      box-sizing:border-box;
+    }
+    textarea{ min-height:120px; resize:vertical; }
+    .help { font-size:12px; color:var(--muted); margin-top:6px; }
+    .error { color:var(--danger); font-size:13px; margin-top:6px;}
+    .hidden { display:none; }
+
+    .actions{ display:flex; gap:10px; align-items:center; margin-top:16px; }
+    button{
+      background:var(--accent);
+      color:white;
+      border:0;
+      padding:10px 14px;
+      border-radius:10px;
+      cursor:pointer;
+      font-weight:600;
+    }
+    button[disabled]{ opacity:0.6; cursor:not-allowed; }
+
+    .status{
+      margin-top:12px;
+      padding:10px 12px;
+      border-radius:8px;
+      display:flex;
+      align-items:center;
+      gap:8px;
+    }
+    .status.success{ background: rgba(88,165,55,0.12); color: #166534; border:1px solid rgba(88,165,55,0.15); }
+    .status.fail{ background: rgba(227,76,65,0.08); color: var(--danger); border:1px solid rgba(231,76,60,0.12); }
+
+    /* small responsive tweak */
+    @media (min-width:640px){
+      .two-col{ display:grid; grid-template-columns: 1fr 1fr; gap:12px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="card" role="main" aria-labelledby="contactTitle">
+    <h1 id="contactTitle">Contact Us</h1>
+    <p class="lead">Please fill out the form below. Fields marked with * are required.</p>
+
+    <form id="contactForm" novalidate aria-describedby="formInstructions">
+      <div id="formInstructions" class="help">We'll validate your name, email, and message before submitting.</div>
+
+      <div class="row">
+        <div>
+          <label for="name">Full name <span aria-hidden="true">*</span></label>
+          <input id="name" name="name" type="text" autocomplete="name" required aria-required="true" />
+          <div id="nameError" class="error hidden" role="alert"></div>
+        </div>
+
+        <div>
+          <label for="email">Email <span aria-hidden="true">*</span></label>
+          <input id="email" name="email" type="email" autocomplete="email" required aria-required="true" />
+          <div id="emailError" class="error hidden" role="alert"></div>
+        </div>
+
+        <div>
+          <label for="subject">Subject (optional)</label>
+          <input id="subject" name="subject" type="text" />
+        </div>
+
+        <div>
+          <label for="message">Message <span aria-hidden="true">*</span></label>
+          <textarea id="message" name="message" required aria-required="true" placeholder="Your message..."></textarea>
+          <div id="messageError" class="error hidden" role="alert"></div>
+          <div id="messageHelp" class="help">Minimum 10 characters recommended.</div>
+        </div>
+      </div>
+
+      <div class="actions">
+        <button id="submitBtn" type="submit">Send Message</button>
+        <button id="clearBtn" type="button">Clear</button>
+      </div>
+
+      <div id="status" class="status hidden" role="status" aria-live="polite"></div>
+    </form>
+  </main>
+
+  <script>
+    // DOM references
+    const form = document.getElementById('contactForm');
+    const nameInput = document.getElementById('name');
+    const emailInput = document.getElementById('email');
+    const subjectInput = document.getElementById('subject');
+    const messageInput = document.getElementById('message');
+    const submitBtn = document.getElementById('submitBtn');
+    const clearBtn = document.getElementById('clearBtn');
+    const statusBox = document.getElementById('status');
+
+    const nameError = document.getElementById('nameError');
+    const emailError = document.getElementById('emailError');
+    const messageError = document.getElementById('messageError');
+
+    // Validation rules
+    function validateName(value){
+      if(!value || !value.trim()) return 'Name is required.';
+      // Only letters, spaces, dots, hyphens allowed (simple check)
+      const re = /^[a-zA-Z\s\.\-']{2,60}$/;
+      if(!re.test(value.trim())) return 'Enter a valid name (letters, spaces only).';
+      return '';
+    }
+
+    function validateEmail(value){
+      if(!value || !value.trim()) return 'Email is required.';
+      // robust but simple email regex
+      const re = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+      if(!re.test(value.trim())) return 'Please enter a valid email address.';
+      return '';
+    }
+
+    function validateMessage(value){
+      if(!value || !value.trim()) return 'Message is required.';
+      if(value.trim().length < 10) return 'Message must be at least 10 characters.';
+      return '';
+    }
+
+    // show / hide helpers
+    function showError(el, msg){
+      if(!msg){
+        el.classList.add('hidden');
+        el.textContent = '';
+      } else {
+        el.classList.remove('hidden');
+        el.textContent = msg;
+      }
+    }
+
+    function showStatus(success, text){
+      statusBox.className = 'status'; // reset classes
+      statusBox.classList.add(success ? 'success' : 'fail');
+      statusBox.textContent = text;
+      statusBox.classList.remove('hidden');
+    }
+
+    function hideStatus(){
+      statusBox.classList.add('hidden');
+      statusBox.textContent = '';
+    }
+
+    // Live validation on blur/input
+    nameInput.addEventListener('input', () => {
+      showError(nameError, validateName(nameInput.value));
+    });
+    emailInput.addEventListener('input', () => {
+      showError(emailError, validateEmail(emailInput.value));
+    });
+    messageInput.addEventListener('input', () => {
+      showError(messageError, validateMessage(messageInput.value));
+    });
+
+    // Clear button
+    clearBtn.addEventListener('click', () => {
+      form.reset();
+      showError(nameError, '');
+      showError(emailError, '');
+      showError(messageError, '');
+      hideStatus();
+      nameInput.focus();
+    });
+
+    // Submit handler
+    form.addEventListener('submit', (ev) => {
+      ev.preventDefault(); // prevent real submit for demo
+
+      // run validations
+      const nameMsg = validateName(nameInput.value);
+      const emailMsg = validateEmail(emailInput.value);
+      const messageMsg = validateMessage(messageInput.value);
+
+      showError(nameError, nameMsg);
+      showError(emailError, emailMsg);
+      showError(messageError, messageMsg);
+
+      if(nameMsg || emailMsg || messageMsg){
+        // focus first invalid field
+        if(nameMsg) nameInput.focus();
+        else if(emailMsg) emailInput.focus();
+        else messageInput.focus();
+
+        showStatus(false, 'Please fix the highlighted errors and try again.');
+        return;
+      }
+
+      // If everything valid, simulate successful submission
+      submitBtn.disabled = true;
+      showStatus(true, 'Sending message...');
+
+      // Simulate asynchronous send (e.g., an AJAX call). Here we fake with setTimeout.
+      // IMPORTANT: This simulation is purely client-side — replace with fetch() to send to your server.
+      setTimeout(() => {
+        showStatus(true, 'Message sent successfully. Thank you!');
+        submitBtn.disabled = false;
+        // Optionally clear form after success:
+        form.reset();
+      }, 900);
+    });
+
+    // Optional: handle Enter key in message field to avoid accidental submit
+    messageInput.addEventListener('keydown', (e) => {
+      if(e.key === 'Enter' && (e.ctrlKey || e.metaKey)){
+        // ctrl+enter to submit
+        submitBtn.click();
+      }
+    });
+
+    // Accessibility nicety: set initial focus
+    nameInput.focus();
+  </script>
+</body>
+</html>
